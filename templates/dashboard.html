@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — VMS{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon"><i data-lucide="users"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ stats.total_visitors }}</span>
+            <span class="stat-label">Total Visitors</span>
+        </div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-icon"><i data-lucide="calendar-check"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ stats.visits_today }}</span>
+            <span class="stat-label">Visits Today</span>
+        </div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-icon"><i data-lucide="radio"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ stats.active_visits }}</span>
+            <span class="stat-label">Currently Inside</span>
+        </div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-icon"><i data-lucide="smile"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">
+                {% if stats.emotions_today %}
+                    {{ stats.emotions_today.keys()|list|first|default('—') }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+            <span class="stat-label">Top Emotion Today</span>
+        </div>
+    </div>
+</div>
+
+<!-- Two-column: Live Camera + Emotions Chart -->
+<div class="dashboard-grid">
+    <!-- Live Scanner -->
+    <div class="card">
+        <h2 class="card-title"><i data-lucide="video"></i> Live Camera Scanner</h2>
+        <div class="camera-container">
+            <video id="webcam" autoplay playsinline muted></video>
+            <canvas id="overlay" class="overlay-canvas"></canvas>
+        </div>
+        <div class="camera-actions">
+            <button id="btn-scan" class="btn btn-primary" onclick="scanFrame()"><i data-lucide="scan-face"></i> Scan Face</button>
+            <span id="scan-status" class="scan-status"></span>
+        </div>
+        <div id="scan-results" class="scan-results"></div>
+    </div>
+
+    <!-- Emotion Summary -->
+    <div class="card">
+        <h2 class="card-title"><i data-lucide="bar-chart-3"></i> Today's Emotion Summary</h2>
+        {% if stats.emotions_today %}
+        <div class="emotion-bars">
+            {% set max_count = stats.emotions_today.values()|max %}
+            {% for emotion, count in stats.emotions_today.items() %}
+            <div class="emotion-row">
+                <span class="emotion-label">{{ emotion }}</span>
+                <div class="emotion-bar-bg">
+                    <div class="emotion-bar emotion-{{ emotion|lower }}"
+                         style="width: {{ (count / max_count * 100)|round }}%">
+                    </div>
+                </div>
+                <span class="emotion-count">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">No visits recorded today yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Visitor Logs -->
+<div class="card">
+    <h2 class="card-title"><i data-lucide="clipboard-list"></i> Recent Visitor Activity</h2>
+    {% if logs %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Visitor</th>
+                    <th>Emotion</th>
+                    <th>Confidence</th>
+                    <th>Check-In</th>
+                    <th>Check-Out</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('visitor_detail', visitor_id=log.visitor_id) }}">
+                            {{ log.visitor_name }}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="emotion-badge emotion-{{ log.emotion|lower }}">
+                            {{ log.emotion }}
+                        </span>
+                    </td>
+                    <td>{{ "%.0f"|format(log.confidence * 100) }}%</td>
+                    <td>{{ log.checked_in_at }}</td>
+                    <td>{{ log.checked_out_at or '—' }}</td>
+                    <td>
+                        {% if not log.checked_out_at %}
+                        <form method="POST" action="{{ url_for('checkout', log_id=log.id) }}" style="display:inline">
+                            <button type="submit" class="btn btn-sm btn-outline">Check Out</button>
+                        </form>
+                        {% else %}
+                        <span class="text-muted">Done</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No recent activity.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

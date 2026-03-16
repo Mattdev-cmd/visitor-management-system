@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Visitor Logs — VMS{% endblock %}
+{% block page_title %}Visitor Logs{% endblock %}
+
+{% block content %}
+<!-- Search Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <form method="GET" class="search-form">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search visitors by name..."
+               class="search-input" maxlength="100">
+        <button type="submit" class="btn btn-primary"><i data-lucide="search"></i> Search</button>
+        {% if query %}
+        <a href="{{ url_for('visitors_list') }}" class="btn btn-outline">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Visitor Table -->
+<div class="card">
+    <h2 class="card-title"><i data-lucide="users"></i> Registered Visitors ({{ visitors|length }})</h2>
+    {% if visitors %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Photo</th>
+                    <th>Name</th>
+                    <th>Purpose</th>
+                    <th>Contact</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in visitors %}
+                <tr>
+                    <td>{{ v.id }}</td>
+                    <td>
+                        {% if v.photo_path %}
+                        <img src="{{ url_for('static', filename=v.photo_path) }}"
+                             class="avatar-sm" alt="Photo">
+                        {% else %}
+                        <div class="avatar-placeholder"><i data-lucide="user"></i></div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('visitor_detail', visitor_id=v.id) }}">
+                            {{ v.name }}
+                        </a>
+                    </td>
+                    <td>{{ v.purpose }}</td>
+                    <td>{{ v.contact or '—' }}</td>
+                    <td>{{ v.created_at }}</td>
+                    <td>
+                        <a href="{{ url_for('visitor_detail', visitor_id=v.id) }}"
+                           class="btn btn-sm btn-outline">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">
+        {% if query %}No visitors found matching "{{ query }}".{% else %}No visitors registered yet.{% endif %}
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

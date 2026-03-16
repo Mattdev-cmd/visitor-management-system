@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ visitor.name }} — VMS{% endblock %}
+{% block page_title %}Visitor Details{% endblock %}
+
+{% block content %}
+<div class="detail-layout">
+    <!-- Visitor Profile Card -->
+    <div class="card profile-card">
+        <div class="profile-photo">
+            {% if visitor.photo_path %}
+            <img src="{{ url_for('static', filename=visitor.photo_path) }}" alt="{{ visitor.name }}">
+            {% else %}
+            <div class="avatar-placeholder large"><i data-lucide="user"></i></div>
+            {% endif %}
+        </div>
+        <h2 class="profile-name">{{ visitor.name }}</h2>
+        <div class="profile-details">
+            <div class="detail-row">
+                <span class="detail-label">Purpose</span>
+                <span class="detail-value">{{ visitor.purpose }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Contact</span>
+                <span class="detail-value">{{ visitor.contact or '—' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Registered</span>
+                <span class="detail-value">{{ visitor.created_at }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Total Visits</span>
+                <span class="detail-value">{{ logs|length }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Face Enrolled</span>
+                <span class="detail-value">
+                    {% if visitor.face_encoding %}
+                    <span class="badge badge-success">Yes</span>
+                    {% else %}
+                    <span class="badge badge-muted">No</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <a href="{{ url_for('visitors_list') }}" class="btn btn-outline btn-block" style="margin-top:1rem">
+            &larr; Back to List
+        </a>
+    </div>
+
+    <!-- Visit History -->
+    <div class="card" style="flex:2">
+        <h2 class="card-title"><i data-lucide="clipboard-list"></i> Visit History</h2>
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Photo</th>
+                        <th>Emotion</th>
+                        <th>Confidence</th>
+                        <th>Check-In</th>
+                        <th>Check-Out</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.id }}</td>
+                        <td>
+                            {% if log.photo_path %}
+                            <img src="{{ url_for('static', filename=log.photo_path) }}"
+                                 class="avatar-sm" alt="Visit photo">
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="emotion-badge emotion-{{ log.emotion|lower }}">
+                                {{ log.emotion }}
+                            </span>
+                        </td>
+                        <td>{{ "%.0f"|format(log.confidence * 100) }}%</td>
+                        <td>{{ log.checked_in_at }}</td>
+                        <td>{{ log.checked_out_at or '—' }}</td>
+                        <td>
+                            {% if not log.checked_out_at %}
+                            <form method="POST" action="{{ url_for('checkout', log_id=log.id) }}">
+                                <button type="submit" class="btn btn-sm btn-outline">Check Out</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted">Done</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No visit records yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

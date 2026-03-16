@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pre-Register — Visitor Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg);
+            padding: 2rem 1rem;
+        }
+        .prereg-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 1.5rem;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        }
+        .prereg-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .prereg-header .logo-icon { display: inline-flex; color: var(--primary); margin-bottom: .5rem; }
+        .prereg-header .logo-icon svg { width: 48px; height: 48px; }
+        .prereg-header h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+        .prereg-header p { color: var(--text-muted); font-size: .88rem; line-height: 1.4; }
+        .photo-preview { width: 100%; max-width: 280px; margin: .5rem auto; display: none; border-radius: 8px; }
+        .photo-preview img { width: 100%; border-radius: 8px; }
+        .camera-btns { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+        @media (max-width: 500px) {
+            body { padding: 1rem .5rem; }
+            .prereg-card { padding: 1.5rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="prereg-card">
+        <div class="prereg-header">
+            <div class="logo-icon"><i data-lucide="shield-check"></i></div>
+            <h1>Visitor Pre-Registration</h1>
+            <p>Fill in your details before your visit. The admin will review and approve your registration.</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div style="margin-bottom:1rem">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">Full Name <span class="required">*</span></label>
+                <input type="text" id="name" name="name" required placeholder="Enter your full name" maxlength="200">
+            </div>
+            <div class="form-group">
+                <label for="purpose">Purpose of Visit <span class="required">*</span></label>
+                <select id="purpose" name="purpose" required>
+                    <option value="">— Select purpose —</option>
+                    <option value="Meeting">Meeting</option>
+                    <option value="Delivery">Delivery</option>
+                    <option value="Interview">Interview</option>
+                    <option value="Parent Visit">Parent Visit</option>
+                    <option value="Government Official">Government Official</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="contact">Contact Number</label>
+                <input type="tel" id="contact" name="contact" placeholder="e.g. 09123456789" maxlength="20">
+            </div>
+            <div class="form-group">
+                <label>Your Photo</label>
+                <div class="camera-btns">
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-camera" onclick="startCamera()">
+                        <i data-lucide="camera"></i> Take Selfie
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm" id="btn-snap" onclick="snapPhoto()" style="display:none">
+                        <i data-lucide="aperture"></i> Capture
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-retake" onclick="retakePhoto()" style="display:none">
+                        <i data-lucide="refresh-cw"></i> Retake
+                    </button>
+                </div>
+                <video id="cam-video" autoplay playsinline muted style="width:100%;max-width:280px;border-radius:8px;display:none"></video>
+                <canvas id="cam-canvas" style="display:none"></canvas>
+                <div class="photo-preview" id="photo-preview"><img id="preview-img" alt="Preview"></div>
+                <p class="help-text" style="margin-top:.5rem">Or upload a file:</p>
+                <input type="file" name="photo" accept="image/*" id="photo-upload" capture="user">
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+                <i data-lucide="send"></i> Submit Pre-Registration
+            </button>
+        </form>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        let camStream = null;
+
+        function startCamera() {
+            const video = document.getElementById('cam-video');
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 480, height: 360 } })
+                .then(stream => {
+                    camStream = stream;
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    document.getElementById('btn-camera').style.display = 'none';
+                    document.getElementById('btn-snap').style.display = 'inline-flex';
+                    lucide.createIcons();
+                })
+                .catch(err => alert('Camera access denied: ' + err.message));
+        }
+
+        function snapPhoto() {
+            const video = document.getElementById('cam-video');
+            const canvas = document.getElementById('cam-canvas');
+            const preview = document.getElementById('photo-preview');
+            const img = document.getElementById('preview-img');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+
+            canvas.toBlob(blob => {
+                const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('photo-upload').files = dt.files;
+            }, 'image/jpeg', 0.85);
+
+            img.src = canvas.toDataURL('image/jpeg', 0.85);
+            preview.style.display = 'block';
+            video.style.display = 'none';
+            if (camStream) camStream.getTracks().forEach(t => t.stop());
+            document.getElementById('btn-snap').style.display = 'none';
+            document.getElementById('btn-retake').style.display = 'inline-flex';
+            lucide.createIcons();
+        }
+
+        function retakePhoto() {
+            document.getElementById('photo-preview').style.display = 'none';
+            document.getElementById('btn-retake').style.display = 'none';
+            document.getElementById('btn-camera').style.display = 'inline-flex';
+            document.getElementById('photo-upload').value = '';
+            lucide.createIcons();
+        }
+
+        // Auto-dismiss flash messages
+        document.querySelectorAll('.flash').forEach(el => {
+            setTimeout(() => el.style.opacity = '0', 5000);
+            setTimeout(() => el.remove(), 5500);
+        });
+    </script>
+</body>
+</html>

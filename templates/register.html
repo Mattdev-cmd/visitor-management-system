@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Register Visitor — VMS{% endblock %}
+{% block page_title %}Register New Visitor{% endblock %}
+
+{% block content %}
+<div class="register-layout">
+    <!-- Registration Form -->
+    <div class="card">
+        <h2 class="card-title"><i data-lucide="file-text"></i> Visitor Information</h2>
+        <form method="POST" enctype="multipart/form-data" id="register-form">
+            <div class="form-group">
+                <label for="name">Full Name <span class="required">*</span></label>
+                <input type="text" id="name" name="name" required placeholder="Enter visitor's full name"
+                       maxlength="200">
+            </div>
+            <div class="form-group">
+                <label for="purpose">Purpose of Visit <span class="required">*</span></label>
+                <select id="purpose" name="purpose" required>
+                    <option value="">— Select purpose —</option>
+                    <option value="Meeting">Meeting</option>
+                    <option value="Delivery">Delivery</option>
+                    <option value="Interview">Interview</option>
+                    <option value="Parent Visit">Parent Visit</option>
+                    <option value="Government Official">Government Official</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="contact">Contact Number</label>
+                <input type="tel" id="contact" name="contact" placeholder="e.g. 09123456789"
+                       maxlength="20">
+            </div>
+
+            <!-- Photo capture -->
+            <div class="form-group">
+                <label>Visitor Photo</label>
+                <div class="photo-capture">
+                    <div class="capture-preview">
+                        <video id="reg-webcam" autoplay playsinline muted></video>
+                        <canvas id="reg-canvas" style="display:none"></canvas>
+                        <img id="reg-preview" style="display:none" alt="Captured photo">
+                    </div>
+                    <div class="capture-actions">
+                        <button type="button" class="btn btn-primary" id="btn-start-cam"
+                                onclick="startRegCamera()"><i data-lucide="camera"></i> Start Camera</button>
+                        <button type="button" class="btn btn-success" id="btn-capture"
+                                onclick="capturePhoto()" style="display:none"><i data-lucide="aperture"></i> Capture</button>
+                        <button type="button" class="btn btn-outline" id="btn-retake"
+                                onclick="retakePhoto()" style="display:none"><i data-lucide="refresh-cw"></i> Retake</button>
+                    </div>
+                    <p class="help-text">Or upload a file:</p>
+                    <input type="file" name="photo" accept="image/*" id="photo-upload">
+                </div>
+                <input type="hidden" name="photo_b64" id="photo_b64">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg btn-block">
+                <i data-lucide="check"></i> Register Visitor
+            </button>
+        </form>
+    </div>
+
+    <!-- Quick-Scan Panel -->
+    <div class="card">
+        <h2 class="card-title"><i data-lucide="scan-face"></i> Quick Face Scan</h2>
+        <p class="help-text">
+            Point the camera at a returning visitor to auto-identify them.
+        </p>
+        <div class="camera-container" id="quick-scan-area" style="min-height:300px; background:#1a1a2e; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+            <p class="empty-state" style="color:#aaa;">Camera preview will appear on the dashboard.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let regStream = null;
+
+    function startRegCamera() {
+        const video = document.getElementById('reg-webcam');
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                regStream = stream;
+                video.srcObject = stream;
+                document.getElementById('btn-start-cam').style.display = 'none';
+                document.getElementById('btn-capture').style.display = 'inline-block';
+            })
+            .catch(err => alert('Camera access denied: ' + err.message));
+    }
+
+    function capturePhoto() {
+        const video = document.getElementById('reg-webcam');
+        const canvas = document.getElementById('reg-canvas');
+        const preview = document.getElementById('reg-preview');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        document.getElementById('photo_b64').value = dataUrl;
+        preview.src = dataUrl;
+        preview.style.display = 'block';
+        video.style.display = 'none';
+
+        document.getElementById('btn-capture').style.display = 'none';
+        document.getElementById('btn-retake').style.display = 'inline-block';
+
+        // Stop camera to save resources
+        if (regStream) regStream.getTracks().forEach(t => t.stop());
+    }
+
+    function retakePhoto() {
+        document.getElementById('reg-preview').style.display = 'none';
+        document.getElementById('reg-webcam').style.display = 'block';
+        document.getElementById('photo_b64').value = '';
+        document.getElementById('btn-retake').style.display = 'none';
+        startRegCamera();
+    }
+</script>
+{% endblock %}

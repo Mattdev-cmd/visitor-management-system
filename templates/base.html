@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Visitor Management System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon"><i data-lucide="shield-check"></i></span>
+                <span class="logo-text">VMS</span>
+            </div>
+            <p class="logo-sub">Visitor Management</p>
+        </div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">
+                <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span> Dashboard
+            </a></li>
+            <li><a href="{{ url_for('register') }}" class="{% if request.endpoint == 'register' %}active{% endif %}">
+                <span class="nav-icon"><i data-lucide="user-plus"></i></span> Register Visitor
+            </a></li>
+            <li><a href="{{ url_for('pending_list') }}" class="{% if request.endpoint == 'pending_list' %}active{% endif %}">
+                <span class="nav-icon"><i data-lucide="clock"></i></span> Pending Visitors
+            </a></li>
+            <li><a href="{{ url_for('visitors_list') }}" class="{% if request.endpoint == 'visitors_list' %}active{% endif %}">
+                <span class="nav-icon"><i data-lucide="users"></i></span> Visitor Logs
+            </a></li>
+            {% if session.get('role') == 'superadmin' %}
+            <li><a href="{{ url_for('users_list') }}" class="{% if request.endpoint == 'users_list' %}active{% endif %}">
+                <span class="nav-icon"><i data-lucide="settings"></i></span> Manage Users
+            </a></li>
+            {% endif %}
+        </ul>
+        <div class="sidebar-footer">
+            {% if session.get('username') %}
+            <div style="margin-bottom:.5rem"><small>Logged in as <strong>{{ session.username }}</strong></small></div>
+            <div style="margin-bottom:.3rem"><span class="badge badge-{{ 'success' if session.get('role') == 'superadmin' else 'muted' }}">{{ session.get('role', 'admin') }}</span></div>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline" style="width:100%;justify-content:center"><i data-lucide="log-out"></i> Logout</a>
+            {% endif %}
+            <small style="display:block;margin-top:.5rem">Raspberry Pi 5 &bull; AI Powered</small>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="top-bar">
+            <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">&#9776;</button>
+            <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            <div class="top-bar-right">
+                <span class="clock" id="clock"></span>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-container">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="content-area">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <script>
+        // Live clock
+        function updateClock() {
+            const el = document.getElementById('clock');
+            if (el) el.textContent = new Date().toLocaleString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Auto-dismiss flash messages
+        document.querySelectorAll('.flash').forEach(el => {
+            setTimeout(() => el.style.opacity = '0', 4000);
+            setTimeout(() => el.remove(), 4500);
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

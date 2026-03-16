@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Pending Visitors — VMS{% endblock %}
+{% block page_title %}Pending Pre-Registrations{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom:1.5rem">
+    <p class="help-text" style="margin:0">
+        Share this link with visitors so they can pre-register:
+        <strong id="prereg-link"></strong>
+        <button type="button" class="btn btn-sm btn-outline" onclick="copyLink()" style="margin-left:.5rem">
+            <i data-lucide="copy"></i> Copy
+        </button>
+    </p>
+</div>
+
+<div class="card">
+    <h2 class="card-title"><i data-lucide="clock"></i> Pending Visitors ({{ pending|length }})</h2>
+    {% if pending %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Photo</th>
+                    <th>Name</th>
+                    <th>Purpose</th>
+                    <th>Contact</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pending %}
+                <tr>
+                    <td>
+                        {% if p.photo_path %}
+                        <img src="{{ url_for('static', filename=p.photo_path) }}" class="avatar-sm" alt="Photo">
+                        {% else %}
+                        <div class="avatar-placeholder"><i data-lucide="user"></i></div>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ p.name }}</strong></td>
+                    <td>{{ p.purpose }}</td>
+                    <td>{{ p.contact or '—' }}</td>
+                    <td>{{ p.submitted_at }}</td>
+                    <td>
+                        <div style="display:flex;gap:.4rem">
+                            <form method="POST" action="{{ url_for('approve_prereg', prereg_id=p.id) }}">
+                                <button type="submit" class="btn btn-sm btn-success">
+                                    <i data-lucide="check"></i> Approve
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('reject_prereg', prereg_id=p.id) }}"
+                                  onsubmit="return confirm('Reject this pre-registration?')">
+                                <button type="submit" class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)">
+                                    <i data-lucide="x"></i> Reject
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No pending pre-registrations.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const link = window.location.origin + '/pre-register';
+    document.getElementById('prereg-link').textContent = link;
+
+    function copyLink() {
+        navigator.clipboard.writeText(link).then(() => alert('Link copied!'));
+    }
+</script>
+{% endblock %}
