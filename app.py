@@ -270,6 +270,70 @@ def index():
     recent_logs = visitor_service.get_visit_logs(limit=10)
     return render_template("dashboard.html", stats=stats, logs=recent_logs)
 
+    # ------------------------------------------------------------------ #
+    #  Visitor Logs Report
+    # ------------------------------------------------------------------ #
+
+
+@app.route("/logs")
+@login_required
+def logs_report():
+    logs = visitor_service.get_visit_logs(limit=1000)
+    return render_template("logs_report.html", logs=logs)
+
+@app.route("/logs/export/pdf")
+@login_required
+def export_logs_pdf():
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    from io import BytesIO
+    logs = visitor_service.get_visit_logs(limit=1000)
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+    y = height - 40
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(40, y, "Visitor Logs Report")
+    y -= 30
+    p.setFont("Helvetica", 10)
+    headers = ["Visitor", "Emotion", "Confidence", "Check-In", "Check-Out"]
+    for i, h in enumerate(headers):
+        p.drawString(40 + i*100, y, h)
+    y -= 20
+    for log in logs:
+        if y < 50:
+            p.showPage()
+            y = height - 40
+        p.drawString(40, y, str(log.get("visitor_name", "")))
+        p.drawString(140, y, str(log.get("emotion", "")))
+        p.drawString(240, y, f"{int(log.get('confidence',0)*100)}%")
+        p.drawString(340, y, str(log.get("checked_in_at", "")))
+        p.drawString(440, y, str(log.get("checked_out_at", "") or '—'))
+        y -= 18
+    p.save()
+    buffer.seek(0)
+    return Response(buffer, mimetype='application/pdf', headers={
+        'Content-Disposition': 'attachment;filename=visitor_logs.pdf'
+    })
+
+@app.route("/logs/export/excel")
+@login_required
+def export_logs_excel():
+    import pandas as pd
+    from io import BytesIO
+    logs = visitor_service.get_visit_logs(limit=1000)
+    df = pd.DataFrame(logs)
+    # Only keep relevant columns and rename
+    df = df[["visitor_name", "emotion", "confidence", "checked_in_at", "checked_out_at"]]
+    df.columns = ["Visitor", "Emotion", "Confidence", "Check-In", "Check-Out"]
+    df["Confidence"] = (df["Confidence"] * 100).astype(int).astype(str) + "%"
+    output = BytesIO()
+    df.to_excel(output, index=False, engine="openpyxl")
+    output.seek(0)
+    return Response(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={
+        'Content-Disposition': 'attachment;filename=visitor_logs.xlsx'
+    })
+
 
 @app.route("/register", methods=["GET", "POST"])
 @login_required
@@ -415,13 +479,15 @@ def api_stats():
 
 @app.route("/video_feed")
 def video_feed():
+    def gen(camera):
+        while True:
+            frame = camera.get_frame()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
     try:
-        cam = _get_camera()
-        return Response(
-            cam.generate_mjpeg(),
-            mimetype="multipart/x-mixed-replace; boundary=frame",
-        )
-    except RuntimeError as exc:
+        cam = Camera()
+        return Response(gen(cam), mimetype='multipart/x-mixed-replace; boundary=frame')
+    except Exception as exc:
         return str(exc), 500
 
 

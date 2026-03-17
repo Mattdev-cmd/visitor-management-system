@@ -223,6 +223,33 @@ Go to **Visitor Logs** and use the search bar to filter by name.
 
 ---
 
+## Recent Modifications
+
+### Features Added
+- Visitor Logs Report page with export to PDF and Excel
+- Export buttons on logs report page (using pandas, openpyxl, reportlab)
+- Styled notification for 'Angry' emotion scan on dashboard
+- Improved camera.py for Raspberry Pi compatibility (PiCamera2 backend)
+- Updated /video_feed route for live dashboard streaming from Pi Camera
+
+### Camera Setup (Raspberry Pi)
+- Uses PiCamera2 for live streaming and quick scan
+- Ensure `python3-picamera2` and `opencv-python` are installed
+- For Pi Camera Module, set `VMS_CAMERA_BACKEND=picamera` and `VMS_CAMERA_INDEX=0`
+
+### Export Usage
+- Go to Visitor Logs Report page
+- Click 'Export to PDF' or 'Export to Excel' to download logs
+
+### Emotion Alert
+- When scanning, if 'Angry' emotion is detected, a styled notification appears in the dashboard
+
+### Troubleshooting
+- If camera not working, check PiCamera2 installation and camera interface enabled
+- See terminal output for detailed error messages
+
+---
+
 ## License
 
 MIT — free for academic and personal use.

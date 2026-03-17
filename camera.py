@@ -18,7 +18,9 @@ class Camera:
     # ------------------------------------------------------------------ #
     #  Lifecycle
     # ------------------------------------------------------------------ #
+
     def open(self):
+        # Try PiCamera2 first if backend is picamera
         if self._backend == "picamera":
             try:
                 from picamera2 import Picamera2          # type: ignore
@@ -28,53 +30,46 @@ class Camera:
                 )
                 self._picam.configure(cam_config)
                 self._picam.start()
-            except ImportError:
-                print("[Camera] picamera2 not available — falling back to OpenCV")
+                print("[Camera] Using PiCamera2 backend.")
+                return
+            except Exception as e:
+                print(f"[Camera] PiCamera2 failed: {e}\nFalling back to OpenCV...")
                 self._backend = "opencv"
-                self._open_opencv()
-        else:
+        # Try OpenCV with V4L2 backend
+        try:
             self._open_opencv()
+            print("[Camera] Using OpenCV backend.")
+        except Exception as e:
+            print(f"[Camera] OpenCV failed: {e}")
+            raise RuntimeError("Cannot open camera with either PiCamera2 or OpenCV. Please check camera connection, permissions, and config.")
 
     def _open_opencv(self):
-        self._cap = cv2.VideoCapture(config.CAMERA_INDEX)
+        # Try V4L2 backend first (best for Pi)
+        self._cap = cv2.VideoCapture(config.CAMERA_INDEX, cv2.CAP_V4L2)
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.CAMERA_WIDTH)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAMERA_HEIGHT)
         if not self._cap.isOpened():
-            raise RuntimeError("Cannot open camera (OpenCV)")
+            # Try default backend as fallback
+            self._cap = cv2.VideoCapture(config.CAMERA_INDEX)
+            self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.CAMERA_WIDTH)
+            self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAMERA_HEIGHT)
+            if not self._cap.isOpened():
+                raise RuntimeError("Cannot open camera (OpenCV, all backends)")
 
     def close(self):
         if self._cap is not None:
-            self._cap.release()
-        if self._picam is not None:
-            self._picam.close()
+            from picamera2 import Picamera2
+            import cv2
 
-    # ------------------------------------------------------------------ #
-    #  Capture
-    # ------------------------------------------------------------------ #
-    def capture_frame(self) -> np.ndarray:
-        """Return a BGR numpy frame."""
-        if self._backend == "picamera" and self._picam is not None:
-            # picamera2 returns RGB — convert to BGR for OpenCV compat
-            frame_rgb = self._picam.capture_array()
-            return cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-        if self._cap is not None:
+            class Camera:
+                def __init__(self, width=640, height=480):
+                    self.picam = Picamera2()
+                    config = self.picam.create_preview_configuration(main={"size": (width, height)})
+                    self.picam.configure(config)
+                    self.picam.start()
+
+                def get_frame(self):
+                    frame = self.picam.capture_array()
+                    ret, jpeg = cv2.imencode('.jpg', frame)
+                    return jpeg.tobytes()
             ok, frame = self._cap.read()
-            if not ok:
-                raise RuntimeError("Failed to read frame from camera")
-            return frame
-        raise RuntimeError("Camera not initialised — call open() first")
-
-    # ------------------------------------------------------------------ #
-    #  MJPEG streaming generator
-    # ------------------------------------------------------------------ #
-    def generate_mjpeg(self):
-        """Yield MJPEG frames for Flask streaming response."""
-        while True:
-            frame = self.capture_frame()
-            ok, buf = cv2.imencode(".jpg", frame)
-            if not ok:
-                continue
-            yield (
-                b"--frame\r\n"
-                b"Content-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n"
-            )

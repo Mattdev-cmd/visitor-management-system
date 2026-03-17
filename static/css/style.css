@@ -1,3 +1,23 @@
+/* ---------- Emotion Alert Notification ---------- */
+.alert-emotion-angry {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    z-index: 9999;
+    background: var(--danger);
+    color: #fff;
+    padding: 1rem 2rem;
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: none;
+    animation: fadeInOut 0.4s;
+}
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(-20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
 /* ================================================================
    Visitor Management System — Main Stylesheet
    Clean, modern, light-themed UI optimised for a monitoring dashboard.

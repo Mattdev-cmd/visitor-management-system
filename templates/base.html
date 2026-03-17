@@ -31,6 +31,9 @@
             <li><a href="{{ url_for('visitors_list') }}" class="{% if request.endpoint == 'visitors_list' %}active{% endif %}">
                 <span class="nav-icon"><i data-lucide="users"></i></span> Visitor Logs
             </a></li>
+            <li><a href="{{ url_for('logs_report') }}" class="{% if request.endpoint == 'logs_report' %}active{% endif %}">
+                <span class="nav-icon"><i data-lucide="clipboard-list"></i></span> Visitor Logs Report
+            </a></li>
             {% if session.get('role') == 'superadmin' %}
             <li><a href="{{ url_for('users_list') }}" class="{% if request.endpoint == 'users_list' %}active{% endif %}">
                 <span class="nav-icon"><i data-lucide="settings"></i></span> Manage Users

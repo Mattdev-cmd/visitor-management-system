@@ -79,6 +79,21 @@
     }
 
     // ----------------------------------------------------------------
+
+    //  Styled notification for Angry emotion
+    function showAngryNotification() {
+        let notif = document.getElementById("angry-alert");
+        if (!notif) {
+            notif = document.createElement("div");
+            notif.id = "angry-alert";
+            notif.className = "alert-emotion-angry";
+            notif.innerHTML = `<strong>Alert:</strong> Angry emotion detected!`;
+            document.body.appendChild(notif);
+        }
+        notif.style.display = "block";
+        setTimeout(() => { notif.style.display = "none"; }, 4000);
+    }
+
     //  Render scan results below the camera
     // ----------------------------------------------------------------
     function renderResults(faces) {
@@ -86,6 +101,10 @@
         if (!faces.length) {
             resultsDiv.innerHTML = '<p class="empty-state">No face detected.</p>';
             return;
+        }
+        // Check for Angry emotion
+        if (faces.some(f => f.emotion === "Angry")) {
+            showAngryNotification();
         }
         resultsDiv.innerHTML = faces.map(f => {
             const who = f.visitor_name

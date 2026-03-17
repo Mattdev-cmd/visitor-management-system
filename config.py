@@ -23,8 +23,11 @@ MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB
 
 # ---------- Camera ----------
 # Set to "picamera" on a Raspberry Pi with a CSI camera, or "opencv" for USB / dev
-CAMERA_BACKEND = os.environ.get("VMS_CAMERA_BACKEND", "opencv")
-CAMERA_INDEX = int(os.environ.get("VMS_CAMERA_INDEX", 0))
+CAMERA_BACKEND = os.environ.get("VMS_CAMERA_BACKEND", "picamera")  # Default to picamera for Pi
+try:
+	CAMERA_INDEX = int(os.environ.get("VMS_CAMERA_INDEX", 0))
+except Exception:
+	CAMERA_INDEX = 0
 CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 
