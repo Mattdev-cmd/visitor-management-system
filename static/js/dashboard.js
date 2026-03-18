@@ -12,6 +12,8 @@
     const statusEl   = document.getElementById("scan-status");
 
     let stream = null;
+    let autoDetectInterval = null;
+    let isAutoDetecting = false;
 
     // ----------------------------------------------------------------
     //  Start the browser camera
@@ -22,9 +24,58 @@
                 video: { width: 640, height: 480 }
             });
             if (video) video.srcObject = stream;
+            // Start auto-detection after camera initializes
+            setTimeout(startAutoDetection, 1000);
         } catch (err) {
             console.warn("Camera not available:", err.message);
             if (statusEl) statusEl.textContent = "Camera not available";
+        }
+    }
+
+    // ----------------------------------------------------------------
+    //  Auto-detection: scan frames automatically every 800ms
+    // ----------------------------------------------------------------
+    function startAutoDetection() {
+        if (isAutoDetecting) return;
+        isAutoDetecting = true;
+        if (statusEl) statusEl.textContent = "Auto-detecting...";
+        autoDetectInterval = setInterval(async () => {
+            const img = grabFrame();
+            if (!img) return;
+            try {
+                const resp = await fetch("/api/scan", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: img })
+                });
+                const data = await resp.json();
+                if (data.faces && data.faces.length > 0) {
+                    if (statusEl) statusEl.textContent = `Detected ${data.faces.length} face(s)`;
+                    drawBoxes(data.faces);
+                    renderResults(data.faces);
+                } else {
+                    if (statusEl) statusEl.textContent = "No faces detected";
+                    resultsDiv.innerHTML = '<p class="empty-state">No face detected.</p>';
+                    // Clear boxes
+                    if (overlay) {
+                        const ctx = overlay.getContext("2d");
+                        overlay.width = video.videoWidth;
+                        overlay.height = video.videoHeight;
+                        ctx.clearRect(0, 0, overlay.width, overlay.height);
+                    }
+                }
+            } catch (err) {
+                console.error("Auto-detect error:", err);
+            }
+        }, 800);
+    }
+
+    function stopAutoDetection() {
+        if (autoDetectInterval) {
+            clearInterval(autoDetectInterval);
+            autoDetectInterval = null;
+            isAutoDetecting = false;
+            if (statusEl) statusEl.textContent = "Auto-detection stopped";
         }
     }
 
@@ -60,38 +111,64 @@
             const w = right - left;
             const h = bottom - top;
 
+            // Color based on emotion
+            let boxColor = "#4361ee"; // Default blue
+            if (f.emotion === "Angry") {
+                boxColor = "#ff4757"; // Red for angry
+            } else if (f.emotion === "Happy") {
+                boxColor = "#2ed573"; // Green for happy
+            } else if (f.emotion === "Sad") {
+                boxColor = "#a4d0e1"; // Light blue for sad
+            }
+
             // Box
-            ctx.strokeStyle = "#4361ee";
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = boxColor;
+            ctx.lineWidth = 3;
             ctx.strokeRect(x, y, w, h);
 
             // Label background
             const label = `${f.emotion} (${Math.round(f.confidence * 100)}%)`;
             ctx.font = "bold 14px sans-serif";
             const tm = ctx.measureText(label);
-            ctx.fillStyle = "rgba(67,97,238,.85)";
-            ctx.fillRect(x, y - 20, tm.width + 10, 20);
+            ctx.fillStyle = boxColor.replace(")", ", 0.85)").replace("rgb", "rgba");
+            ctx.fillRect(x, y - 25, tm.width + 10, 25);
 
             // Label text
             ctx.fillStyle = "#fff";
-            ctx.fillText(label, x + 5, y - 5);
+            ctx.fillText(label, x + 5, y - 8);
         });
     }
 
     // ----------------------------------------------------------------
-
-    //  Styled notification for Angry emotion
+    //  Enhanced notification for Angry emotion
+    // ----------------------------------------------------------------
     function showAngryNotification() {
+        // Show alert banner
         let notif = document.getElementById("angry-alert");
         if (!notif) {
             notif = document.createElement("div");
             notif.id = "angry-alert";
             notif.className = "alert-emotion-angry";
-            notif.innerHTML = `<strong>Alert:</strong> Angry emotion detected!`;
+            notif.innerHTML = `
+                <div class="alert-content">
+                    <strong>⚠️ ALERT:</strong> Angry emotion detected!
+                </div>
+            `;
             document.body.appendChild(notif);
         }
         notif.style.display = "block";
-        setTimeout(() => { notif.style.display = "none"; }, 4000);
+        notif.classList.add("pulse-animation");
+        
+        // Play alert sound if available
+        try {
+            const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj==");
+            audio.play().catch(() => {});
+        } catch (e) {}
+        
+        setTimeout(() => { 
+            notif.style.display = "none";
+            notif.classList.remove("pulse-animation");
+        }, 5000);
     }
 
     //  Render scan results below the camera
@@ -125,7 +202,7 @@
     }
 
     // ----------------------------------------------------------------
-    //  Exposed: scan the current frame
+    //  Exposed: scan the current frame (manual scan or internal use)
     // ----------------------------------------------------------------
     window.scanFrame = async function () {
         if (statusEl) statusEl.textContent = "Scanning...";
@@ -146,6 +223,22 @@
             renderResults(data.faces);
         } catch (err) {
             if (statusEl) statusEl.textContent = "Scan failed: " + err.message;
+        }
+    };
+
+    // ----------------------------------------------------------------
+    //  Toggle auto-detection on/off
+    // ----------------------------------------------------------------
+    window.toggleAutoDetection = function() {
+        const btn = document.getElementById("btn-scan");
+        if (isAutoDetecting) {
+            stopAutoDetection();
+            btn.textContent = '▶ Start Auto-Detection';
+            btn.classList.remove("btn-active");
+        } else {
+            startAutoDetection();
+            btn.textContent = '⏹ Stop Auto-Detection';
+            btn.classList.add("btn-active");
         }
     };
 

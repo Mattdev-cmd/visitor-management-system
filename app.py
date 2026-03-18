@@ -25,7 +25,7 @@ from flask import (
 import config
 from camera import Camera
 from database import init_db, get_db
-from services import face_service, emotion_service, visitor_service
+from services import emotion_service, visitor_service
 
 # ------------------------------------------------------------------ #
 #  App factory
@@ -54,7 +54,7 @@ def _get_camera() -> Camera:
 @app.context_processor
 def inject_now():
     from datetime import datetime
-    return {"now": datetime.now}
+    return {"now": datetime.now()}
 
 
 # ------------------------------------------------------------------ #
@@ -165,6 +165,7 @@ def pending_list():
 @app.route("/pending/approve/<int:prereg_id>", methods=["POST"])
 @login_required
 def approve_prereg(prereg_id):
+    from services import face_service
     with get_db() as conn:
         row = conn.execute("SELECT * FROM pre_registrations WHERE id = ?", (prereg_id,)).fetchone()
         if not row:
@@ -279,7 +280,16 @@ def index():
 @login_required
 def logs_report():
     logs = visitor_service.get_visit_logs(limit=1000)
-    return render_template("logs_report.html", logs=logs)
+    daily_trends = visitor_service.get_daily_emotion_trends(days=7)
+    weekly_trends = visitor_service.get_weekly_emotion_trends(weeks=4)
+    emotion_stats = visitor_service.get_emotion_statistics(days=30)
+    return render_template(
+        "logs_report.html",
+        logs=logs,
+        daily_trends=daily_trends,
+        weekly_trends=weekly_trends,
+        emotion_stats=emotion_stats
+    )
 
 @app.route("/logs/export/pdf")
 @login_required
@@ -335,9 +345,139 @@ def export_logs_excel():
     })
 
 
+# ------------------------------------------------------------------ #
+#  Emotion Trends Report (Printable)
+# ------------------------------------------------------------------ #
+
+@app.route("/trends/print")
+@login_required
+def print_emotion_trends():
+    """Render a print-friendly emotion trends page."""
+    daily_trends = visitor_service.get_daily_emotion_trends(days=7)
+    weekly_trends = visitor_service.get_weekly_emotion_trends(weeks=4)
+    emotion_stats = visitor_service.get_emotion_statistics(days=30)
+    
+    return render_template(
+        "print_trends.html",
+        daily_trends=daily_trends,
+        weekly_trends=weekly_trends,
+        emotion_stats=emotion_stats
+    )
+
+
+@app.route("/trends/export/pdf")
+@login_required
+def export_trends_pdf():
+    """Export emotion trends as a professional PDF."""
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib.units import inch
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.lib import colors
+    from io import BytesIO
+    from datetime import datetime
+    
+    daily_trends = visitor_service.get_daily_emotion_trends(days=7)
+    weekly_trends = visitor_service.get_weekly_emotion_trends(weeks=4)
+    emotion_stats = visitor_service.get_emotion_statistics(days=30)
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title = Paragraph(f"<b>Emotion Trends Report</b><br/><font size=10>{datetime.now().strftime('%B %d, %Y')}</font>", 
+                     styles['Heading1'])
+    story.append(title)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Daily Trends Table
+    story.append(Paragraph("<b>Daily Emotion Trends (Last 7 Days)</b>", styles['Heading2']))
+    daily_data = [["Date", "Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]]
+    for date in sorted(daily_trends.keys()):
+        row = [date.split('-')[-1]]  # Just show day
+        for emotion in ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]:
+            count = daily_trends[date].get(emotion, 0)
+            row.append(str(count))
+        daily_data.append(row)
+    
+    daily_table = Table(daily_data, colWidths=[0.8*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch])
+    daily_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3b82f6')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f4f8')])
+    ]))
+    story.append(daily_table)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Weekly Trends Table
+    story.append(Paragraph("<b>Weekly Emotion Trends (Last 4 Weeks)</b>", styles['Heading2']))
+    weekly_data = [["Week", "Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]]
+    for week in sorted(weekly_trends.keys(), reverse=True):
+        row = [week]
+        for emotion in ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]:
+            count = weekly_trends[week].get(emotion, 0)
+            row.append(str(count))
+        weekly_data.append(row)
+    
+    weekly_table = Table(weekly_data, colWidths=[0.8*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch, 0.6*inch])
+    weekly_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#10b981')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f4f8')])
+    ]))
+    story.append(weekly_table)
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Emotion Statistics Table
+    story.append(Paragraph("<b>Emotion Statistics (Last 30 Days)</b>", styles['Heading2']))
+    stats_data = [["Emotion", "Count", "Percentage"]]
+    for emotion in sorted(emotion_stats.keys()):
+        data = emotion_stats[emotion]
+        stats_data.append([emotion, str(data['count']), f"{data['percentage']}%"])
+    
+    stats_table = Table(stats_data, colWidths=[2*inch, 1*inch, 1.5*inch])
+    stats_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f59e0b')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f0f4f8')])
+    ]))
+    story.append(stats_table)
+    
+    doc.build(story)
+    buffer.seek(0)
+    return Response(buffer, mimetype='application/pdf', headers={
+        'Content-Disposition': 'attachment;filename=emotion_trends.pdf'
+    })
+
+
 @app.route("/register", methods=["GET", "POST"])
 @login_required
 def register():
+    from services import face_service
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         purpose = request.form.get("purpose", "").strip()
@@ -417,6 +557,7 @@ def checkout(log_id):
 @app.route("/api/scan", methods=["POST"])
 def api_scan():
     """Accept a base64 image, detect face & emotion, try to identify."""
+    from services import face_service
     data = request.get_json(force=True)
     b64 = data.get("image", "")
     if not b64:

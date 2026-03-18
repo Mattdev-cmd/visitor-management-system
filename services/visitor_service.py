@@ -164,3 +164,102 @@ def get_dashboard_stats() -> dict:
         "active_visits": active_visits,
         "emotions_today": {r["emotion"]: r["cnt"] for r in emotion_counts},
     }
+
+
+def get_daily_emotion_trends(days: int = 7) -> dict:
+    """Get daily emotion counts for the past N days.
+    
+    Returns:
+        Dict with dates as keys and emotion counts as values.
+        Example: {
+            "2026-03-18": {"Angry": 2, "Happy": 5, "Neutral": 3},
+            "2026-03-17": {"Angry": 1, "Happy": 4, "Neutral": 6}
+        }
+    """
+    from datetime import timedelta
+    
+    result = {}
+    with get_db() as conn:
+        for i in range(days):
+            date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+            emotion_counts = conn.execute(
+                """SELECT emotion, COUNT(*) as cnt
+                   FROM visit_logs
+                   WHERE DATE(checked_in_at) = ?
+                   GROUP BY emotion ORDER BY emotion""",
+                (date,),
+            ).fetchall()
+            result[date] = {r["emotion"]: r["cnt"] for r in emotion_counts}
+    
+    # Return in chronological order (oldest first)
+    return {k: result[k] for k in sorted(result.keys())}
+
+
+def get_weekly_emotion_trends(weeks: int = 4) -> dict:
+    """Get weekly emotion counts for the past N weeks.
+    
+    Returns:
+        Dict with week identifiers as keys and emotion counts as values.
+        Example: {
+            "Week 12": {"Angry": 10, "Happy": 25, "Neutral": 15},
+            "Week 11": {"Angry": 8, "Happy": 22, "Neutral": 18}
+        }
+    """
+    from datetime import timedelta
+    
+    result = {}
+    with get_db() as conn:
+        for i in range(weeks):
+            # Calculate week start (Monday)
+            today = datetime.now()
+            week_start = today - timedelta(days=today.weekday() + (7 * i))
+            week_num = week_start.isocalendar()[1]
+            week_key = f"Week {week_num}"
+            
+            emotion_counts = conn.execute(
+                """SELECT emotion, COUNT(*) as cnt
+                   FROM visit_logs
+                   WHERE strftime('%W', checked_in_at) = ?
+                   AND strftime('%Y', checked_in_at) = ?
+                   GROUP BY emotion ORDER BY emotion""",
+                (str(week_num).zfill(2), str(week_start.year)),
+            ).fetchall()
+            result[week_key] = {r["emotion"]: r["cnt"] for r in emotion_counts}
+    
+    # Return in reverse chronological order (current week first)
+    return {k: result[k] for k in sorted(result.keys(), reverse=True)}
+
+
+def get_emotion_statistics(days: int = 30) -> dict:
+    """Get overall emotion statistics for the past N days.
+    
+    Returns:
+        Dict with emotion labels, counts, and percentages.
+    """
+    from datetime import timedelta
+    
+    start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    
+    with get_db() as conn:
+        emotion_counts = conn.execute(
+            """SELECT emotion, COUNT(*) as cnt
+               FROM visit_logs
+               WHERE DATE(checked_in_at) >= ?
+               GROUP BY emotion ORDER BY cnt DESC""",
+            (start_date,),
+        ).fetchall()
+        
+        total = sum(r["cnt"] for r in emotion_counts)
+    
+    result = {}
+    for row in emotion_counts:
+        emotion = row["emotion"]
+        count = row["cnt"]
+        percentage = (count / total * 100) if total > 0 else 0
+        result[emotion] = {
+            "count": count,
+            "percentage": round(percentage, 1)
+        }
+    
+    return result
+

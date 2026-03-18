@@ -3,12 +3,52 @@
 {% block page_title %}Visitor Logs Report{% endblock %}
 
 {% block content %}
+<!-- Export Buttons Section -->
+<div class="card export-section">
+    <h3 style="margin-bottom: 1rem; color: #3b82f6;">📥 Export & Print Options</h3>
+    <div class="button-group">
+        <a href="{{ url_for('export_logs_pdf') }}" class="btn btn-sm btn-outline" target="_blank">Export Logs (PDF)</a>
+        <a href="{{ url_for('export_logs_excel') }}" class="btn btn-sm btn-outline" target="_blank">Export Logs (Excel)</a>
+        <a href="{{ url_for('print_emotion_trends') }}" class="btn btn-sm btn-primary" target="_blank">📊 Printable Trends Sheet</a>
+        <a href="{{ url_for('export_trends_pdf') }}" class="btn btn-sm btn-success" target="_blank">📄 Emotion Trends (PDF)</a>
+    </div>
+</div>
+<!-- Emotion Trends Section -->
+<div class="trends-grid">
+    <!-- Daily Emotion Trends -->
+    <div class="card">
+        <h2 class="card-title"><i data-lucide="trending-up"></i> Daily Emotion Trends (7 Days)</h2>
+        <div class="chart-container">
+            <canvas id="dailyTrendsChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Weekly Emotion Trends -->
+    <div class="card">
+        <h2 class="card-title"><i data-lucide="bar-chart-2"></i> Weekly Emotion Trends (4 Weeks)</h2>
+        <div class="chart-container">
+            <canvas id="weeklyTrendsChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Emotion Statistics -->
+<div class="card">
+    <h2 class="card-title"><i data-lucide="pie-chart"></i> Emotion Statistics (30 Days)</h2>
+    <div class="stats-grid-emotions">
+        {% for emotion, data in emotion_stats.items() %}
+        <div class="emotion-stat-card emotion-{{ emotion|lower }}">
+            <div class="stat-emotion-name">{{ emotion }}</div>
+            <div class="stat-emotion-count">{{ data.count }}</div>
+            <div class="stat-emotion-percent">{{ data.percentage }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Visitor Logs Table -->
 <div class="card">
     <h2 class="card-title"><i data-lucide="clipboard-list"></i> Visitor Logs Report</h2>
-    <div class="mb-2">
-        <a href="{{ url_for('export_logs_pdf') }}" class="btn btn-sm btn-outline" target="_blank">Export to PDF</a>
-        <a href="{{ url_for('export_logs_excel') }}" class="btn btn-sm btn-outline" target="_blank">Export to Excel</a>
-    </div>
     {% if logs %}
     <div class="table-responsive">
         <table class="table">
@@ -25,7 +65,7 @@
                 {% for log in logs %}
                 <tr>
                     <td>{{ log.visitor_name }}</td>
-                    <td>{{ log.emotion }}</td>
+                    <td><span class="emotion-badge emotion-{{ log.emotion|lower }}">{{ log.emotion }}</span></td>
                     <td>{{ "%.0f"|format(log.confidence * 100) }}%</td>
                     <td>{{ log.checked_in_at }}</td>
                     <td>{{ log.checked_out_at or '—' }}</td>
@@ -38,4 +78,149 @@
     <p class="empty-state">No logs found.</p>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script>
+(function() {
+    'use strict';
+
+    // Emotion color mapping
+    const emotionColors = {
+        'Angry': 'rgb(239, 68, 68)',
+        'Disgust': 'rgb(107, 114, 128)',
+        'Fear': 'rgb(139, 92, 246)',
+        'Happy': 'rgb(34, 197, 94)',
+        'Sad': 'rgb(59, 130, 246)',
+        'Surprise': 'rgb(249, 115, 22)',
+        'Neutral': 'rgb(156, 163, 175)'
+    };
+
+    const emotionBgColors = {
+        'Angry': 'rgba(239, 68, 68, 0.1)',
+        'Disgust': 'rgba(107, 114, 128, 0.1)',
+        'Fear': 'rgba(139, 92, 246, 0.1)',
+        'Happy': 'rgba(34, 197, 94, 0.1)',
+        'Sad': 'rgba(59, 130, 246, 0.1)',
+        'Surprise': 'rgba(249, 115, 22, 0.1)',
+        'Neutral': 'rgba(156, 163, 175, 0.1)'
+    };
+
+    // Daily Trends Chart
+    const dailyData = {{ daily_trends|tojson }};
+    const dates = Object.keys(dailyData);
+    const emotions = new Set();
+    
+    dates.forEach(date => {
+        Object.keys(dailyData[date]).forEach(e => emotions.add(e));
+    });
+    
+    const emotionArray = Array.from(emotions).sort();
+    const datasets = emotionArray.map(emotion => {
+        return {
+            label: emotion,
+            data: dates.map(date => dailyData[date][emotion] || 0),
+            borderColor: emotionColors[emotion] || '#999',
+            backgroundColor: emotionBgColors[emotion] || 'rgba(155, 155, 155, 0.1)',
+            tension: 0.4,
+            fill: true,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: emotionColors[emotion] || '#999',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+        };
+    });
+
+    const dailyCtx = document.getElementById('dailyTrendsChart');
+    if (dailyCtx) {
+        new Chart(dailyCtx, {
+            type: 'line',
+            data: {
+                labels: dates.map(d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: { size: 12, weight: 'bold' }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Weekly Trends Chart
+    const weeklyData = {{ weekly_trends|tojson }};
+    const weeks = Object.keys(weeklyData).reverse();
+    const weekEmotions = new Set();
+    
+    weeks.forEach(week => {
+        Object.keys(weeklyData[week]).forEach(e => weekEmotions.add(e));
+    });
+    
+    const weekEmotionArray = Array.from(weekEmotions).sort();
+    const weekDatasets = weekEmotionArray.map(emotion => {
+        return {
+            label: emotion,
+            data: weeks.map(week => weeklyData[week][emotion] || 0),
+            backgroundColor: emotionColors[emotion] || '#999',
+            borderColor: emotionColors[emotion] || '#999',
+            borderWidth: 0.5,
+            borderRadius: 4
+        };
+    });
+
+    const weeklyCtx = document.getElementById('weeklyTrendsChart');
+    if (weeklyCtx) {
+        new Chart(weeklyCtx, {
+            type: 'bar',
+            data: {
+                labels: weeks,
+                datasets: weekDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: { size: 12, weight: 'bold' }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        beginAtZero: true
+                    },
+                    y: {
+                        stacked: true
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

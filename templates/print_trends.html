@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Trends Report — VMS</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #1e293b;
+            line-height: 1.6;
+            background: #f0f4f8;
+            padding: 0.5in;
+        }
+
+        .container {
+            max-width: 8.5in;
+            background: white;
+            margin: 0 auto;
+            padding: 1in;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            page-break-after: always;
+        }
+
+        .header {
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 0.5in;
+            margin-bottom: 0.5in;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: #3b82f6;
+            margin-bottom: 0.2in;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .section {
+            margin-bottom: 0.6in;
+            page-break-inside: avoid;
+        }
+
+        .section h2 {
+            font-size: 1.1rem;
+            color: #3b82f6;
+            border-bottom: 2px solid #cbd5e1;
+            padding-bottom: 0.2in;
+            margin-bottom: 0.3in;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.2in;
+        }
+
+        th {
+            background: #3b82f6;
+            color: white;
+            padding: 0.3in 0.2in;
+            text-align: left;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #2563eb;
+        }
+
+        td {
+            padding: 0.25in 0.2in;
+            font-size: 0.85rem;
+            border: 1px solid #cbd5e1;
+        }
+
+        tr:nth-child(even) {
+            background: #f0f4f8;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.3in;
+            margin-top: 0.3in;
+        }
+
+        .stat-card {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-left: 4px solid #3b82f6;
+            padding: 0.3in;
+            border-radius: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .stat-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0.1in 0;
+        }
+
+        .stat-percent {
+            font-size: 0.8rem;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        /* Color-coded cards */
+        .stat-card.angry { border-left-color: #ef4444; }
+        .stat-card.happy { border-left-color: #10b981; }
+        .stat-card.sad { border-left-color: #3b82f6; }
+        .stat-card.neutral { border-left-color: #9ca3af; }
+        .stat-card.surprise { border-left-color: #f97316; }
+        .stat-card.disgust { border-left-color: #606c38; }
+        .stat-card.fear { border-left-color: #9b5de5; }
+
+        .footer {
+            margin-top: 0.5in;
+            padding-top: 0.3in;
+            border-top: 1px solid #cbd5e1;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+
+        .print-button-bar {
+            text-align: center;
+            margin-bottom: 0.3in;
+        }
+
+        .btn {
+            background: #3b82f6;
+            color: white;
+            padding: 0.3in 0.6in;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 0 0.2in;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                max-width: 100%;
+                box-shadow: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            .print-button-bar {
+                display: none;
+            }
+
+            .btn {
+                display: none;
+            }
+
+            .footer {
+                margin-top: 0.3in;
+            }
+
+            .section {
+                page-break-inside: avoid;
+            }
+
+            table {
+                page-break-inside: avoid;
+            }
+        }
+
+        @page {
+            size: letter;
+            margin: 0.5in;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Print/Export Buttons -->
+        <div class="print-button-bar">
+            <button class="btn" onclick="window.print()">🖨 Print Sheet</button>
+            <button class="btn btn-secondary" onclick="window.history.back()">← Back to Report</button>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Emotion Trends Report</h1>
+            <p>Generated on {{ now.strftime('%B %d, %Y at %I:%M %p') }}</p>
+        </div>
+
+        <!-- Daily Trends Section -->
+        <div class="section">
+            <h2>📈 Daily Emotion Trends (Last 7 Days)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Angry</th>
+                        <th>Disgust</th>
+                        <th>Fear</th>
+                        <th>Happy</th>
+                        <th>Sad</th>
+                        <th>Surprise</th>
+                        <th>Neutral</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for date in daily_trends.keys()|sort %}
+                    <tr>
+                        <td><strong>{{ date.split('-')[-1] }} Mar</strong></td>
+                        <td>{{ daily_trends[date].get('Angry', 0) }}</td>
+                        <td>{{ daily_trends[date].get('Disgust', 0) }}</td>
+                        <td>{{ daily_trends[date].get('Fear', 0) }}</td>
+                        <td>{{ daily_trends[date].get('Happy', 0) }}</td>
+                        <td>{{ daily_trends[date].get('Sad', 0) }}</td>
+                        <td>{{ daily_trends[date].get('Surprise', 0) }}</td>
+                        <td>{{ daily_trends[date].get('Neutral', 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Weekly Trends Section -->
+        <div class="section">
+            <h2>📊 Weekly Emotion Trends (Last 4 Weeks)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Angry</th>
+                        <th>Disgust</th>
+                        <th>Fear</th>
+                        <th>Happy</th>
+                        <th>Sad</th>
+                        <th>Surprise</th>
+                        <th>Neutral</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in weekly_trends.keys()|sort(reverse=True) %}
+                    <tr>
+                        <td><strong>{{ week }}</strong></td>
+                        <td>{{ weekly_trends[week].get('Angry', 0) }}</td>
+                        <td>{{ weekly_trends[week].get('Disgust', 0) }}</td>
+                        <td>{{ weekly_trends[week].get('Fear', 0) }}</td>
+                        <td>{{ weekly_trends[week].get('Happy', 0) }}</td>
+                        <td>{{ weekly_trends[week].get('Sad', 0) }}</td>
+                        <td>{{ weekly_trends[week].get('Surprise', 0) }}</td>
+                        <td>{{ weekly_trends[week].get('Neutral', 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Emotion Statistics Section -->
+        <div class="section">
+            <h2>📋 Emotion Statistics (Last 30 Days)</h2>
+            <div class="stats-grid">
+                {% for emotion, data in emotion_stats.items()|sort %}
+                <div class="stat-card {{ emotion|lower }}">
+                    <div class="stat-label">{{ emotion }}</div>
+                    <div class="stat-value">{{ data.count }}</div>
+                    <div class="stat-percent">{{ data.percentage }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Visitor Management System | Emotion Trends Report | {{ now.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -6,18 +6,57 @@
     z-index: 9999;
     background: var(--danger);
     color: #fff;
-    padding: 1rem 2rem;
+    padding: 1rem 1.5rem;
     border-radius: var(--radius);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    font-size: 1.1rem;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35), 0 4px 12px rgba(0,0,0,0.15);
+    font-size: 1rem;
     font-weight: 600;
     display: none;
-    animation: fadeInOut 0.4s;
+    animation: slideInFromRight 0.4s ease-in-out;
+    border-left: 5px solid #dc2626;
+    min-width: 300px;
 }
+
+.alert-emotion-angry .alert-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.alert-emotion-angry.pulse-animation {
+    animation: slideInFromRight 0.4s ease-in-out, pulseAlert 0.8s ease-in-out 0.4s infinite;
+}
+
+@keyframes slideInFromRight {
+    0% { 
+        opacity: 0; 
+        transform: translateX(100px) translateY(-20px);
+    }
+    100% { 
+        opacity: 1; 
+        transform: translateX(0) translateY(0);
+    }
+}
+
+@keyframes pulseAlert {
+    0%, 100% { 
+        box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35), 0 4px 12px rgba(0,0,0,0.15);
+    }
+    50% { 
+        box-shadow: 0 12px 32px rgba(239, 68, 68, 0.55), 0 6px 16px rgba(0,0,0,0.2);
+    }
+}
+
 @keyframes fadeInOut {
     0% { opacity: 0; transform: translateY(-20px); }
     100% { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
 /* ================================================================
    Visitor Management System — Main Stylesheet
    Clean, modern, light-themed UI optimised for a monitoring dashboard.
@@ -280,6 +319,96 @@ a:hover { text-decoration: underline; }
     font-weight: 600;
 }
 
+/* ---------- Emotion Trends & Statistics ---------- */
+.trends-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 350px;
+    margin-top: 1rem;
+}
+
+.stats-grid-emotions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.emotion-stat-card {
+    padding: 1.2rem;
+    border-radius: var(--radius);
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.emotion-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.emotion-stat-card.emotion-angry {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 4px solid #ef4444;
+}
+
+.emotion-stat-card.emotion-happy {
+    background: rgba(34, 197, 94, 0.1);
+    border-left: 4px solid #22c55e;
+}
+
+.emotion-stat-card.emotion-sad {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 4px solid #3b82f6;
+}
+
+.emotion-stat-card.emotion-neutral {
+    background: rgba(156, 163, 175, 0.1);
+    border-left: 4px solid #9ca3af;
+}
+
+.emotion-stat-card.emotion-surprise {
+    background: rgba(249, 115, 22, 0.1);
+    border-left: 4px solid #f97316;
+}
+
+.emotion-stat-card.emotion-disgust {
+    background: rgba(96, 108, 56, 0.1);
+    border-left: 4px solid #606c38;
+}
+
+.emotion-stat-card.emotion-fear {
+    background: rgba(155, 93, 229, 0.1);
+    border-left: 4px solid #9b5de5;
+}
+
+.stat-emotion-name {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: .4rem;
+    text-transform: capitalize;
+}
+
+.stat-emotion-count {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: .3rem;
+}
+
+.stat-emotion-percent {
+    font-size: .8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
 /* ---------- Table ---------- */
 .table-responsive { overflow-x: auto; }
 .table {
@@ -345,6 +474,7 @@ a:hover { text-decoration: underline; }
 
 .btn-primary  { background: var(--primary); color: #fff; }
 .btn-primary:hover { background: var(--primary-light); }
+.btn-primary.btn-active { background: var(--danger); animation: pulse 1s ease-in-out infinite; }
 .btn-success  { background: var(--success); color: #fff; }
 .btn-outline  { background: transparent; border: 1px solid var(--border); color: var(--text); }
 .btn-outline:hover { border-color: var(--primary); color: var(--primary-light); }
@@ -352,6 +482,37 @@ a:hover { text-decoration: underline; }
 .btn-sm  { padding: .35rem .75rem; font-size: .8rem; }
 .btn-lg  { padding: .75rem 1.8rem; font-size: 1rem; }
 .btn-block { width: 100%; justify-content: center; }
+
+/* ---------- Export Section ---------- */
+.export-section {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+    border: 2px solid #cbd5e1;
+    border-radius: var(--radius);
+}
+
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+}
+
+.button-group .btn {
+    flex: 1;
+    min-width: 180px;
+}
+
+@media (max-width: 768px) {
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .button-group .btn {
+        width: 100%;
+    }
+}
+
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #059669; }
 
 /* ---------- Forms ---------- */
 .form-group { margin-bottom: 1.2rem; }
@@ -475,11 +636,15 @@ a:hover { text-decoration: underline; }
     .dashboard-grid,
     .register-layout,
     .detail-layout { grid-template-columns: 1fr; }
+    .trends-grid { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .stats-grid-emotions { grid-template-columns: repeat(3, 1fr); }
     .content-area { padding: 1rem; }
     .top-bar { padding: .75rem 1rem; }
 }
 
 @media (max-width: 500px) {
     .stats-grid { grid-template-columns: 1fr; }
+    .stats-grid-emotions { grid-template-columns: 1fr; }
+    .trends-grid { grid-template-columns: 1fr; }
 }
